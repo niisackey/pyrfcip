@@ -1,0 +1,9 @@
+# pyproject.toml
+[project]
+name = "rfcip"
+version = "0.1.0"
+dependencies = ["pandas", "requests"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
