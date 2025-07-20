@@ -433,23 +433,75 @@ def _get_standard_sob_data(
                 tmp.write(response.content)
                 tmp_path = tmp.name
 
+            # Try multiple reading strategies
             try:
                 df = pd.read_excel(tmp_path)
-            except Exception as e:
+            except Exception:
                 try:
                     df = pd.read_excel(tmp_path, skiprows=1)
                 except:
                     try:
                         df = pd.read_csv(tmp_path)
                     except:
-                        warnings.warn(f"Failed to read downloaded file: {str(e)}")
+                        warnings.warn(f"Failed to read downloaded file")
                         return pd.DataFrame()
 
             df = clean_column_names(df)
 
+            # Add year if missing
             if 'commodity_year' not in df.columns:
                 df['commodity_year'] = year
 
+            # COMPREHENSIVE COLUMN MAPPING
+            column_mapping = {
+                # Total Liability
+                'liabilities': 'total_liability',
+                'liability': 'total_liability',
+                'liability_amount': 'total_liability',
+                'liabilityamount': 'total_liability',
+                # Total Premium
+                'total_prem': 'total_premium',
+                'totalpremium': 'total_premium',
+                'total_premium_amount': 'total_premium',
+                'totalpremiumamount': 'total_premium',
+                # County Name
+                'location_county_name': 'county_name',
+                'county': 'county_name',
+                'county_name': 'county_name',  # Keep if already exists
+                # State Abbreviation
+                'locationstateabbreviation': 'state_abbrv',
+                'location_state_abbreviation': 'state_abbrv',
+                'state_abbrv': 'state_abbrv',  # Keep if already exists
+                # Other columns
+                'commoditycode': 'commodity_code',
+                'commodity_code': 'commodity_code',
+                'commodityname': 'commodity_name',
+                'commodity_name': 'commodity_name',
+                'subsidyamount': 'subsidy',
+                'subsidy_amount': 'subsidy',
+                'indemnityamount': 'indemnity',
+                'indemnity_amount': 'indemnity',
+                'commodityyear': 'commodity_year',
+                'commodity_year': 'commodity_year'
+            }
+            
+            # Apply renaming
+            df = df.rename(columns=lambda col: column_mapping.get(col, col))
+            
+            # ENSURE REQUIRED COLUMNS EXIST
+            if 'county_name' not in df.columns:
+                df['county_name'] = None
+            if 'total_liability' not in df.columns:
+                if 'liability' in df.columns:
+                    df['total_liability'] = df['liability']
+                else:
+                    df['total_liability'] = 0.0
+            if 'total_premium' not in df.columns:
+                if 'total_prem' in df.columns:
+                    df['total_premium'] = df['total_prem']
+                else:
+                    df['total_premium'] = 0.0
+                    
             return df
 
         except requests.exceptions.RequestException as e:
@@ -472,3 +524,120 @@ def _get_standard_sob_data(
                     pass
 
     return pd.DataFrame()
+
+
+def get_summary_data_from_excel(
+    year: int = datetime.now().year,
+    retries: int = 3,
+    delay: float = 1.5
+) -> pd.DataFrame:
+    base_url = "https://public-rma.fpac.usda.gov/apps/SummaryOfBusiness/ReportGenerator/ExportToExcel"
+    params = {
+        "CC": "B",
+        "CY": str(year),
+        "ORD": "CM,ST",
+        "VisibleColumns": (
+            "CommodityYear,CommodityName,CommodityCode,"
+            "LocationStateAbbreviation,"
+            "InsurancePlanAbbreviation,CoverageLevelPercent,"
+            "LiabilityAmount,TotalPremiumAmount,SubsidyAmount,IndemnityAmount"
+        )
+    }
+    url = f"{base_url}?{'&'.join(f'{k}={v}' for k, v in params.items())}"
+
+    for attempt in range(1, retries + 1):
+        logger.info(f"[Attempt {attempt}] Requesting: {url}")
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                tmp.write(response.content)
+                tmp_path = tmp.name
+
+            # Try multiple reading strategies
+            try:
+                df = pd.read_excel(tmp_path)
+            except:
+                try:
+                    df = pd.read_excel(tmp_path, skiprows=1)
+                except:
+                    df = pd.read_csv(tmp_path)
+            
+            os.unlink(tmp_path)
+            df = clean_column_names(df)
+            
+            # COMPREHENSIVE COLUMN MAPPING
+            column_mapping = {
+                # Total Liability
+                'liabilities': 'total_liability',
+                'liability': 'total_liability',
+                'liability_amount': 'total_liability',
+                'liabilityamount': 'total_liability',
+                # Total Premium
+                'total_prem': 'total_premium',
+                'totalpremium': 'total_premium',
+                'total_premium_amount': 'total_premium',
+                'totalpremiumamount': 'total_premium',
+                # County Name
+                'location_county_name': 'county_name',
+                'county': 'county_name',
+                'county_name': 'county_name',  # Keep if already exists
+                # State Abbreviation
+                'locationstateabbreviation': 'state_abbrv',
+                'location_state_abbreviation': 'state_abbrv',
+                'state_abbrv': 'state_abbrv',  # Keep if already exists
+                # Other columns
+                'commoditycode': 'commodity_code',
+                'commodity_code': 'commodity_code',
+                'commodityname': 'commodity_name',
+                'commodity_name': 'commodity_name',
+                'subsidyamount': 'subsidy',
+                'subsidy_amount': 'subsidy',
+                'indemnityamount': 'indemnity',
+                'indemnity_amount': 'indemnity',
+                'commodityyear': 'commodity_year',
+                'commodity_year': 'commodity_year'
+            }
+            
+            # Apply renaming
+            df = df.rename(columns=lambda col: column_mapping.get(col, col))
+            
+            # ENSURE REQUIRED COLUMNS EXIST
+            if 'county_name' not in df.columns:
+                df['county_name'] = None
+            if 'total_liability' not in df.columns:
+                if 'liability' in df.columns:
+                    df['total_liability'] = df['liability']
+                else:
+                    df['total_liability'] = 0.0
+            if 'total_premium' not in df.columns:
+                if 'total_prem' in df.columns:
+                    df['total_premium'] = df['total_prem']
+                else:
+                    df['total_premium'] = 0.0
+                    
+            # SELECT ONLY STANDARD COLUMNS
+            standard_cols = [
+                'commodity_year', 'commodity_code', 'commodity_name',
+                'state_abbrv', 'county_name', 'total_liability',
+                'total_premium', 'subsidy', 'indemnity'
+            ]
+            return df[[col for col in standard_cols if col in df.columns]]
+
+        except Exception as e:
+            logger.error(f"❌ Attempt {attempt} failed: {e}")
+            time.sleep(delay)
+
+    logger.error("❌ All attempts failed.")
+    return pd.DataFrame()
+
+# Example test invocation
+if __name__ == "__main__":
+    df = get_summary_data_from_excel(2024)
+    if not df.empty:
+        print("\n✅ Columns returned:")
+        for col in df.columns:
+            print(f"- {col}")
+    else:
+        print("❌ No data returned.")
