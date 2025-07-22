@@ -24,7 +24,7 @@ This is a Python-based port of the original R application that explores and anal
 ### 1. Clone and Install
 
 ```bash
-$ git clone <your_repo_url>
+$ git clone <https://github.com/niisackey/pyrfcip>
 $ cd rfcip_python_app
 $ python -m venv venv
 $ venv\Scripts\activate     # On Windows
