@@ -1,8 +1,3 @@
-Absolutely! Here’s the full and ready-to-use README.md file content for your project, with everything integrated — Dylan Turner’s credit, NASS + RMA data sources, and all the sections properly structured:
-
-⸻
-
-
 # 🇺🇸 USDA Crop Insurance Explorer (Python Version)
 
 This project is a **Python/Streamlit port** of the original [R-based application](https://github.com/dylanturner/usda-crop-insurance-explorer) by **Dylan Turner**. It was cloned from his GitHub repository to improve **functionality**, **usability**, and to make the tool more accessible to Python users.
