@@ -1,6 +1,6 @@
 # 🇺🇸 USDA Crop Insurance Explorer (Python Version)
 
-This project is a **Python/Streamlit port** of the original [R-based application](https://github.com/dylanturner/usda-crop-insurance-explorer) by **Dylan Turner**. It was cloned from his GitHub repository to improve **functionality**, **usability**, and to make the tool more accessible to Python users.
+This project is a **Python/Streamlit port** of the original [R-based application](https://github.com/dylan-turner25/rfcip ) by **Dylan Turner**. It was cloned from his GitHub repository to improve **functionality**, **usability**, and to make the tool more accessible to Python users.
 
 The USDA Crop Insurance Explorer provides an interactive way to access, filter, and analyze USDA agricultural data — including **Risk Management Agency (RMA)** and **National Agricultural Statistics Service (NASS)** datasets — with smart validation and CSV export features.
 
@@ -109,3 +109,5 @@ The project aims to improve access to complex USDA crop and insurance datasets b
 🚜 Contributions
 
 Contributions are welcome! Feel free to fork the project, submit pull requests, or open issues for suggestions and improvements.
+
+⸻
