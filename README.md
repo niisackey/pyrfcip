@@ -1,21 +1,26 @@
-# USDA Crop Insurance Explorer (Python Version)
+# 🇺🇸 USDA Crop Insurance Explorer (Python Version)
 
-This is a Python-based port of the original R application that explores and analyzes USDA Risk Management Agency (RMA) Crop Insurance data. It provides interactive visualizations, query tools, and data exports powered by Streamlit.
+This project is a **Python/Streamlit port** of the original [R-based application](https://github.com/dylan-turner25/rfcip ) by **Dylan Turner**. It was cloned from his GitHub repository to improve **functionality**, **usability**, and to make the tool more accessible to Python users.
+
+The USDA Crop Insurance Explorer provides an interactive way to access, filter, and analyze USDA agricultural data — including **Risk Management Agency (RMA)** and **National Agricultural Statistics Service (NASS)** datasets — with smart validation and CSV export features.
 
 ---
 
 ## ✨ Features
 
-* Query by crop, state, year, and insurance program
-* Includes:
-
-  * Summary of Business
-  * County-Level Loss data
-  * Livestock Insurance programs
-  * Price Discovery
-  * Reinsurance Reports (National and State)
-* Reference tables for crop codes, insurance plans, causes of loss
-* Download results as CSV
+- Query by crop, state, year, and insurance program
+- Combines data from **USDA RMA** and **USDA NASS**
+- Modules include:
+  - Summary of Business
+  - County-Level Loss Data
+  - Livestock Insurance Programs
+  - Price Discovery Tools
+  - Reinsurance Reports (National and State)
+- Reference tables for:
+  - Crop codes
+  - Insurance plans
+  - Causes of loss
+- Export query results as CSV
 
 ---
 
@@ -24,98 +29,85 @@ This is a Python-based port of the original R application that explores and anal
 ### 1. Clone and Install
 
 ```bash
-$ git clone <your_repo_url>
-$ cd rfcip_python_app
-$ python -m venv venv
-$ venv\Scripts\activate     # On Windows
-$ pip install -e .
-```
+git clone https://github.com/niisackey/pyrfcip
+cd rfcip_python_app
+python -m venv venv
+venv\Scripts\activate     # On Windows
+pip install -e .
 
-### 2. Launch the App
+2. Launch the App
 
-```bash
-$ streamlit run app.py
-```
+streamlit run app.py
 
----
 
-## ✅ Tests
+⸻
 
-Tests are written using `pytest`.
+✅ Tests
 
-### Run Tests
+Tests are written using pytest.
 
-```bash
-$ pytest -v
-```
+Run Tests
 
-Tests are designed to:
+pytest -v
 
-* Validate data downloads
-* Check expected columns
-* Gracefully skip on remote API/server failure (e.g. HTTP 500)
+Test coverage includes:
+	•	Data download and formatting validation
+	•	Column presence and integrity
+	•	Graceful handling of server/API errors (e.g., HTTP 500)
 
----
+⸻
 
-## 📊 Project Structure
+📁 Project Structure
 
-```
 .
-rfcip/                    # Core modules for data access & cleaning
-    summary.py
-    col.py
-    codes.py
-    livestock.py
-    reinsurance_reports.py
-app.py                   # Streamlit UI
-
+rfcip/                    # Core modules for data access & processing
+│   summary.py
+│   col.py
+│   codes.py
+│   livestock.py
+│   reinsurance_reports.py
+│   nass_data.py          # Handles NASS data integration
+app.py                   # Streamlit interface
 /tests
-    test_summary.py      # All major data source tests
-    test_col.py
-    test_codes.py
-    test_helpers.py
-    ...
+│   test_summary.py
+│   test_col.py
+│   test_codes.py
+│   test_nass.py          # Tests for NASS data access
+│   test_helpers.py
+pyproject.toml           # Build and dependency configuration
 
-pyproject.toml           # Build metadata
-```
 
----
+⸻
 
-## ⚙ Dependencies
+⚙ Dependencies
+	•	Python 3.9+
+	•	Streamlit
+	•	Pandas
+	•	Requests
+	•	BeautifulSoup4
+	•	Pytest
 
-* Python 3.9+
-* Streamlit
-* Pandas
-* Requests
-* BeautifulSoup4
-* pytest
+⸻
 
----
+🌐 Data Sources
+	•	USDA RMA APIs
+	•	USDA NASS Quick Stats API
+	•	Reinsurance Reports
 
-## 🌐 Data Sources
+⸻
 
-* USDA RMA APIs
-* Reinsurance Reports: [https://www.rma.usda.gov/tools-reports/reinsurance-reports](https://www.rma.usda.gov/tools-reports/reinsurance-reports)
+🎯 Goal
 
----
+The project aims to improve access to complex USDA crop and insurance datasets by combining RMA and NASS data sources into one interactive platform for:
+	•	Policy researchers
+	•	Economists
+	•	Data scientists
+	•	Agri-business professionals
 
-## 📊 Goal
+⸻
 
-This tool aims to improve accessibility to complex USDA crop insurance datasets for:
+🚜 Contributions
 
-* Policy researchers
-* Economists
-* Data scientists
-* Agri-business analysts
+Contributions are welcome! Feel free to fork the project, submit pull requests, or open issues for suggestions and improvements.
 
----
-
-## 🚜 Contributions
-
-Feel free to fork, improve, and submit a PR. Suggestions welcome.
-
----
-
-## 📢 Disclaimer
-
-This project is not affiliated with or endorsed by the USDA. Use at your own risk. Data sourced from public USDA RMA tools.
+⸻
