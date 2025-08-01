@@ -130,16 +130,18 @@ def get_summary_data(
         
     # Validate years
     current_year = datetime.now().year
-    years = [y for y in years if 2000 <= y <= current_year + 1]
+    # Limit to reasonable data availability range
+    max_available_year = current_year - 1  # Data is typically available with 1 year lag
+    years = [y for y in years if 2000 <= y <= max_available_year]
     if not years:
-        warnings.warn(f"No valid years specified. Using current year: {current_year}")
-        years = [current_year]
+        warnings.warn(f"No valid years specified. Using previous year: {max_available_year}")
+        years = [max_available_year]
         
-    # Warn about current year data availability
-    recent_years = [y for y in years if y >= current_year]
-    if recent_years and sob_version in ["sob", "sobtpu"]:
-        years_str = ', '.join(map(str, recent_years))
-        warnings.warn(f"Data for recent years ({years_str}) may not be fully available yet")
+    # Warn about data availability for very recent years
+    very_recent_years = [y for y in years if y >= current_year - 1]
+    if very_recent_years and sob_version in ["sob", "sobtpu"]:
+        years_str = ', '.join(map(str, very_recent_years))
+        warnings.warn(f"Data for recent years ({years_str}) may have limited availability")
         
     valid_comm_cats = ["S", "L", "B"]
     if comm_cat not in valid_comm_cats:
@@ -154,10 +156,12 @@ def get_summary_data(
     
     # Handle SOBTPU version separately (process all years at once)
     if sob_version == "sobtpu":
-        # SOBTPU data is only available from 2015 onward
-        valid_sobtpu_years = [y for y in years if y >= 2015]
+        # SOBTPU data is only available from 2015 to 2024 (with reliable coverage)
+        current_year = datetime.now().year
+        max_sobtpu_year = min(current_year - 1, 2024)  # Conservative upper bound
+        valid_sobtpu_years = [y for y in years if 2015 <= y <= max_sobtpu_year]
         if not valid_sobtpu_years:
-            warnings.warn("SOBTPU data is only available from 2015 onward. Switching to standard SOB processing")
+            warnings.warn(f"SOBTPU data is only available from 2015-{max_sobtpu_year}. Switching to standard SOB processing")
             sob_version = "sob"
         else:
             try:
@@ -185,8 +189,10 @@ def get_summary_data(
     
     # Process standard SOB data
     if sob_version == "sob":
-        # First try using SOBTPU as a detailed source for standard SOB format (only for years >= 2015)
-        sobtpu_years = [y for y in years if y >= 2015]
+        # First try using SOBTPU as a detailed source for standard SOB format (only for reliable years)
+        current_year = datetime.now().year
+        max_sobtpu_year = min(current_year - 1, 2024)  # Conservative upper bound
+        sobtpu_years = [y for y in years if 2015 <= y <= max_sobtpu_year and y not in available_years]
         if sobtpu_years:
             try:
                 df = get_sobtpu_data(
@@ -486,21 +492,31 @@ def _get_standard_sob_data(
             }
             
             # Apply renaming
-            df = df.rename(columns=lambda col: column_mapping.get(col, col))
+            df = df.rename(columns=column_mapping)
             
             # ENSURE REQUIRED COLUMNS EXIST
             if 'county_name' not in df.columns:
                 df['county_name'] = None
             if 'total_liability' not in df.columns:
-                if 'liability' in df.columns:
-                    df['total_liability'] = df['liability']
-                else:
-                    df['total_liability'] = 0.0
+                if 'liabilities' in df.columns:
+                    df['total_liability'] = df['liabilities']
+                # ... rest of fallback logic
             if 'total_premium' not in df.columns:
                 if 'total_prem' in df.columns:
                     df['total_premium'] = df['total_prem']
                 else:
                     df['total_premium'] = 0.0
+            
+            # Clean data for visualization compatibility
+            # Replace empty strings and None values with appropriate defaults
+            for col in df.columns:
+                if col in ['commodity_year', 'commodity_code']:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                elif col in ['total_liability', 'total_premium', 'subsidy', 'indemnity']:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+                elif col in ['commodity_name', 'state_abbrv', 'county_name']:
+                    df[col] = df[col].fillna('Unknown').astype(str)
+                    df[col] = df[col].replace('', 'Unknown')
                     
             return df
 
@@ -601,16 +617,15 @@ def get_summary_data_from_excel(
             }
             
             # Apply renaming
-            df = df.rename(columns=lambda col: column_mapping.get(col, col))
+            df = df.rename(columns=column_mapping)
             
             # ENSURE REQUIRED COLUMNS EXIST
             if 'county_name' not in df.columns:
                 df['county_name'] = None
             if 'total_liability' not in df.columns:
-                if 'liability' in df.columns:
-                    df['total_liability'] = df['liability']
-                else:
-                    df['total_liability'] = 0.0
+                if 'liabilities' in df.columns:
+                    df['total_liability'] = df['liabilities']
+                # ... rest of fallback logic
             if 'total_premium' not in df.columns:
                 if 'total_prem' in df.columns:
                     df['total_premium'] = df['total_prem']
@@ -623,7 +638,20 @@ def get_summary_data_from_excel(
                 'state_abbrv', 'county_name', 'total_liability',
                 'total_premium', 'subsidy', 'indemnity'
             ]
-            return df[[col for col in standard_cols if col in df.columns]]
+            result_df = df[[col for col in standard_cols if col in df.columns]]
+            
+            # Clean data for visualization compatibility
+            # Replace empty strings and None values with appropriate defaults
+            for col in result_df.columns:
+                if col in ['commodity_year', 'commodity_code']:
+                    result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0)
+                elif col in ['total_liability', 'total_premium', 'subsidy', 'indemnity']:
+                    result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0.0)
+                else:  # String columns
+                    result_df[col] = result_df[col].fillna('Unknown').astype(str)
+                    result_df[col] = result_df[col].replace('', 'Unknown')
+            
+            return result_df
 
         except Exception as e:
             logger.error(f"❌ Attempt {attempt} failed: {e}")

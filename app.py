@@ -5,6 +5,7 @@ from rfcip.livestock import get_livestock_data
 from rfcip.codes import get_crop_codes, get_insurance_plan_codes, get_price_data
 from rfcip.helpers import valid_state, valid_crop
 from rfcip.reinsurance_reports import build_reinsurance_datasets
+from map_viz import display_map_dashboard
 from datetime import datetime
 import pandas as pd
 import altair as alt
@@ -164,19 +165,32 @@ if st.sidebar.button("Fetch Data"):
         # ======================
         st.subheader("📊 Data Visualizations")
         
+        # Add visualization type selector
+        viz_type = st.radio(
+            "Select Visualization Type",
+            ["Charts", "Maps"],
+            horizontal=True
+        )
+        
         try:
             if data_type == "Summary of Business":
                 # Check if we have required columns
                 required_cols = ['county_name', 'total_premium', 'total_liability', 'indemnity']
                 if all(col in df.columns for col in required_cols):
-                    # Aggregate data by county
-                    county_df = df.groupby('county_name').agg({
-                        'total_premium': 'sum',
-                        'total_liability': 'sum',
-                        'indemnity': 'sum'
-                    }).reset_index()
                     
-                    # Calculate loss ratio
+                    if viz_type == "Maps":
+                        # Display map dashboard
+                        display_map_dashboard(df)
+                    else:
+                        # Display charts (existing functionality)
+                        # Aggregate data by county
+                        county_df = df.groupby('county_name').agg({
+                            'total_premium': 'sum',
+                            'total_liability': 'sum',
+                            'indemnity': 'sum'
+                        }).reset_index()
+                        
+                        # Calculate loss ratio
                     county_df['loss_ratio'] = county_df['indemnity'] / county_df['total_premium']
                     county_df['loss_ratio'] = county_df['loss_ratio'].replace([np.inf, -np.inf], np.nan).fillna(0)
                     
@@ -231,8 +245,13 @@ if st.sidebar.button("Fetch Data"):
                     st.warning(f"⚠️ Cannot generate visualizations. Missing columns: {', '.join(missing)}. Available columns: {', '.join(df.columns)}")
             
             elif data_type == "County-Level Loss":
-                # Create tabs
-                tab1, tab2, tab3 = st.tabs(["Premium & Indemnity", "Loss Causes", "Geographic Distribution"])
+                if viz_type == "Maps":
+                    # Display map dashboard for county-level loss data
+                    display_map_dashboard(df)
+                else:
+                    # Display charts (existing functionality)
+                    # Create tabs
+                    tab1, tab2, tab3 = st.tabs(["Premium & Indemnity", "Loss Causes", "Geographic Distribution"])
                 
                 with tab1:
                     # Premium and Indemnity over time
