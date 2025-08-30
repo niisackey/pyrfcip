@@ -1,0 +1,29 @@
+# Clean ending for app.py - Reference Tables section
+
+        st.subheader("🐄 Livestock Programs")
+        livestock_programs = pd.DataFrame({
+            "Program": ["DRP", "LGM", "LRP"],
+            "Full Name": [
+                "Dairy Revenue Protection",
+                "Livestock Gross Margin",
+                "Livestock Risk Protection"
+            ]
+        })
+        st.dataframe(livestock_programs, use_container_width=True)
+
+    with col2:
+        st.subheader("📋 Insurance Plan Codes")
+        plan_codes_df = get_insurance_plan_codes(year=max(year))
+        st.dataframe(plan_codes_df, use_container_width=True)
+
+        st.subheader("📊 Cause of Loss Codes")
+        col_codes = pd.DataFrame({
+            "Code": list(range(1, 15)),
+            "Description": [
+                "Drought", "Excess Moisture/Precipitation/Rain", "Freeze", "Hail",
+                "Hurricane/Typhoon", "Failure of Irrigation Water Supply", "Fire",
+                "Insect Damage", "Plant Disease", "Other", "Volcanic Eruption",
+                "Decline in Price", "Earthquake", "Wind"
+            ]
+        })
+        st.dataframe(col_codes, use_container_width=True)

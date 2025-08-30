@@ -336,35 +336,21 @@ else:
                     value_col = st.selectbox("Sum by:", numeric_cols)
                     
                     if group_col and value_col:
-                        try:
-                            # Use as_index=False to avoid reset_index conflicts
-                            chart_data = df.groupby(group_col, as_index=False)[value_col].sum()
-                            
-                            # Check if we have data after grouping
-                            if not chart_data.empty and len(chart_data) > 0:
-                                chart_data = chart_data.sort_values(value_col, ascending=False).head(10)
-                                
-                                # Create Altair chart
-                                chart = alt.Chart(chart_data).mark_bar().encode(
-                                    x=alt.X(f'{value_col}:Q', title=value_col.replace('_', ' ').title()),
-                                    y=alt.Y(f'{group_col}:N', sort='-x', title=group_col.replace('_', ' ').title()),
-                                    color=alt.Color(f'{value_col}:Q', scale=alt.Scale(scheme='viridis'))
-                                ).properties(
-                                    width=400,
-                                    height=300,
-                                    title=f'{value_col.replace("_", " ").title()} by {group_col.replace("_", " ").title()}'
-                                )
-                                
-                                st.altair_chart(chart, use_container_width=True)
-                            else:
-                                st.warning("No data available for the selected grouping.")
-                        except Exception as e:
-                            st.error(f"Error creating bar chart: {str(e)}")
-                            st.info("📊 Showing raw data summary instead:")
-                            st.write(f"Selected columns: {group_col}, {value_col}")
-                            if group_col in df.columns and value_col in df.columns:
-                                summary = df[[group_col, value_col]].describe()
-                                st.dataframe(summary)
+                        chart_data = df.groupby(group_col)[value_col].sum().reset_index()
+                        chart_data = chart_data.sort_values(value_col, ascending=False).head(10)
+                        
+                        # Create Altair chart
+                        chart = alt.Chart(chart_data).mark_bar().encode(
+                            x=alt.X(f'{value_col}:Q', title=value_col.replace('_', ' ').title()),
+                            y=alt.Y(f'{group_col}:N', sort='-x', title=group_col.replace('_', ' ').title()),
+                            color=alt.Color(f'{value_col}:Q', scale=alt.Scale(scheme='viridis'))
+                        ).properties(
+                            width=400,
+                            height=300,
+                            title=f'{value_col.replace("_", " ").title()} by {group_col.replace("_", " ").title()}'
+                        )
+                        
+                        st.altair_chart(chart, use_container_width=True)
             
             # Additional charts row
             st.subheader("📈 Trend Analysis")
@@ -380,37 +366,19 @@ else:
                     
                 with col2:
                     if date_col and metric_col:
-                        try:
-                            # Use agg to avoid reset_index conflicts
-                            trend_data = df.groupby(date_col, as_index=False)[metric_col].sum()
-                            
-                            # Check if we have valid trend data
-                            if not trend_data.empty and len(trend_data) > 0:
-                                # Remove any NaN values
-                                trend_data = trend_data.dropna()
-                                
-                                if len(trend_data) > 0:
-                                    trend_chart = alt.Chart(trend_data).mark_line(point=True).encode(
-                                        x=alt.X(f'{date_col}:O', title=date_col.replace('_', ' ').title()),
-                                        y=alt.Y(f'{metric_col}:Q', title=metric_col.replace('_', ' ').title()),
-                                        tooltip=[date_col, metric_col]
-                                    ).properties(
-                                        width=400,
-                                        height=200,
-                                        title=f'{metric_col.replace("_", " ").title()} Over Time'
-                                    )
-                                    
-                                    st.altair_chart(trend_chart, use_container_width=True)
-                                else:
-                                    st.warning("No valid trend data after removing NaN values.")
-                            else:
-                                st.warning("No trend data available for the selected columns.")
-                        except Exception as e:
-                            st.error(f"Error creating trend chart: {str(e)}")
-                            st.info("📊 Showing data summary instead:")
-                            if date_col in df.columns and metric_col in df.columns:
-                                summary_data = df[[date_col, metric_col]].describe()
-                                st.dataframe(summary_data)
+                        trend_data = df.groupby(date_col)[metric_col].sum().reset_index()
+                        
+                        trend_chart = alt.Chart(trend_data).mark_line(point=True).encode(
+                            x=alt.X(f'{date_col}:O', title=date_col.replace('_', ' ').title()),
+                            y=alt.Y(f'{metric_col}:Q', title=metric_col.replace('_', ' ').title()),
+                            tooltip=[date_col, metric_col]
+                        ).properties(
+                            width=400,
+                            height=200,
+                            title=f'{metric_col.replace("_", " ").title()} Over Time'
+                        )
+                        
+                        st.altair_chart(trend_chart, use_container_width=True)
             
             # Correlation heatmap for numeric columns
             if len(numeric_cols) > 2:
@@ -418,45 +386,24 @@ else:
                 corr_cols = st.multiselect("Select columns for correlation:", numeric_cols, default=numeric_cols[:5])
                 
                 if len(corr_cols) > 1:
-                    try:
-                        # Calculate correlation matrix
-                        corr_data = df[corr_cols].corr()
-                        
-                        # Check if correlation matrix is valid
-                        if not corr_data.empty and not corr_data.isna().all().all():
-                            # Create correlation heatmap using Altair - fix reset_index issue
-                            corr_df = corr_data.reset_index()
-                            corr_df = corr_df.melt('index', var_name='var2', value_name='correlation')
-                            corr_df = corr_df.rename(columns={'index': 'var1'})
-                            
-                            # Remove NaN correlations
-                            corr_df = corr_df.dropna()
-                            
-                            if not corr_df.empty:
-                                heatmap = alt.Chart(corr_df).mark_rect().encode(
-                                    x=alt.X('var1:N', title=None),
-                                    y=alt.Y('var2:N', title=None),
-                                    color=alt.Color('correlation:Q', scale=alt.Scale(scheme='redblue', domain=[-1, 1])),
-                                    tooltip=['var1', 'var2', 'correlation']
-                                ).properties(
-                                    width=400,
-                                    height=400,
-                                    title='Correlation Matrix'
-                                )
-                                
-                                st.altair_chart(heatmap, use_container_width=True)
-                            else:
-                                st.warning("No valid correlation data to display.")
-                        else:
-                            st.warning("Cannot calculate correlations - insufficient numeric data.")
-                    except Exception as e:
-                        st.error(f"Error creating correlation heatmap: {str(e)}")
-                        st.info("📊 Showing correlation table instead:")
-                        try:
-                            corr_table = df[corr_cols].corr()
-                            st.dataframe(corr_table)
-                        except Exception as e2:
-                            st.error(f"Could not create correlation table: {str(e2)}")
+                    corr_data = df[corr_cols].corr()
+                    
+                    # Create correlation heatmap using Altair
+                    corr_df = corr_data.reset_index().melt('index')
+                    corr_df.columns = ['var1', 'var2', 'correlation']
+                    
+                    heatmap = alt.Chart(corr_df).mark_rect().encode(
+                        x=alt.X('var1:N', title=None),
+                        y=alt.Y('var2:N', title=None),
+                        color=alt.Color('correlation:Q', scale=alt.Scale(scheme='redblue', domain=[-1, 1])),
+                        tooltip=['var1', 'var2', 'correlation']
+                    ).properties(
+                        width=400,
+                        height=400,
+                        title='Correlation Matrix'
+                    )
+                    
+                    st.altair_chart(heatmap, use_container_width=True)
         else:
             st.warning("No numeric columns found for chart visualization.")
 
@@ -468,6 +415,147 @@ else:
         file_name=f"usda_{data_type.replace(' ', '_')}_{state_input}.csv",
         mime='text/csv'
     )
+
+# --- Codes Reference ---
+st.markdown("---")
+with st.expander("📘 Reference Tables"):
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("🌱 Crop Codes")
+        crop_codes_df = get_crop_codes(year=max(year))
+        st.dataframe(crop_codes_df, use_container_width=True)
+
+        st.subheader("🐄 Livestock Programs")
+        livestock_programs = pd.DataFrame({
+            "Program": ["DRP", "LGM", "LRP"],
+            "Full Name": [
+                "Dairy Revenue Protection",
+                "Livestock Gross Margin",
+                "Livestock Risk Protection"
+            ]
+        })
+        st.dataframe(livestock_programs, use_container_width=True)
+
+    with col2:
+        st.subheader("📋 Insurance Plan Codes")
+        plan_codes_df = get_insurance_plan_codes(year=max(year))
+        st.dataframe(plan_codes_df, use_container_width=True)
+
+        st.subheader("📊 Cause of Loss Codes")
+        col_codes = pd.DataFrame({
+            "Code": list(range(1, 15)),
+            "Description": [
+                "Drought", "Excess Moisture/Precipitation/Rain", "Freeze", "Hail",
+                "Hurricane/Typhoon", "Failure of Irrigation Water Supply", "Fire",
+                "Insect Damage", "Plant Disease", "Other", "Volcanic Eruption",
+                "Decline in Price", "Earthquake", "Wind"
+            ]
+        })
+        st.dataframe(col_codes, use_container_width=True)
+                        # DEBUG VERSION - This should definitely work
+                        st.write("� **DEBUG: Maps selected!**")
+                        debug_maps(df)
+                    else:
+                        # Charts removed - only showing basic data summary
+                        st.write("📊 **Data Summary**")
+                        st.write(f"Total rows: {len(df):,}")
+                        
+                        # Show basic statistics
+                        if 'total_premium' in df.columns:
+                            total_premium = df['total_premium'].sum()
+                            st.metric("Total Premium", f"${total_premium:,.2f}")
+                        
+                        if 'total_liability' in df.columns:
+                            total_liability = df['total_liability'].sum()
+                            st.metric("Total Liability", f"${total_liability:,.2f}")
+                        
+                        if 'indemnity' in df.columns:
+                            total_indemnity = df['indemnity'].sum()
+                            st.metric("Total Indemnity", f"${total_indemnity:,.2f}")
+                else:
+                    missing = [col for col in required_cols if col not in df.columns]
+                    st.warning(f"⚠️ Cannot generate visualizations. Missing columns: {', '.join(missing)}. Available columns: {', '.join(df.columns)}")
+            
+            elif data_type == "County-Level Loss":
+                if viz_type == "Maps":
+                    # Display guaranteed working maps
+                    st.write("🗺️ **Loading County Loss Maps...**")
+                    guaranteed_working_maps(df)
+                else:
+                    # Simple summary instead of complex charts
+                    st.write("📊 **County-Level Loss Summary**")
+                    st.write(f"Total rows: {len(df):,}")
+                    if 'indem_amount' in df.columns:
+                        total_indemnity = df['indem_amount'].sum()
+                        st.metric("Total Indemnity", f"${total_indemnity:,.2f}")
+                    if 'total_premium' in df.columns:
+                        total_premium = df['total_premium'].sum()
+                        st.metric("Total Premium", f"${total_premium:,.2f}")
+            
+            elif data_type == "Livestock Insurance":
+                if viz_type == "Maps":
+                    # Display guaranteed working maps
+                    st.write("🗺️ **Loading Livestock Maps...**")
+                    guaranteed_working_maps(df)
+                else:
+                    # Simple summary for livestock
+                    st.write("📊 **Livestock Insurance Summary**")
+                    st.write(f"Total rows: {len(df):,}")
+                    if 'total_premium' in df.columns:
+                        total_premium = df['total_premium'].sum()
+                        st.metric("Total Premium", f"${total_premium:,.2f}")
+                    if 'total_liability' in df.columns:
+                        total_liability = df['total_liability'].sum()
+                        st.metric("Total Liability", f"${total_liability:,.2f}")
+            
+            elif data_type == "Price Discovery Data":
+                if viz_type == "Maps":
+                    # Display guaranteed working maps
+                    st.write("🗺️ **Loading Price Discovery Maps...**")
+                    guaranteed_working_maps(df)
+                else:
+                    # Simple summary for price data
+                    st.write("📊 **Price Discovery Summary**")
+                    st.write(f"Total rows: {len(df):,}")
+                    if 'price' in df.columns:
+                        avg_price = df['price'].mean()
+                        st.metric("Average Price", f"${avg_price:.2f}")
+            
+            elif data_type == "Reinsurance Reports":
+                if viz_type == "Maps":
+                    # Display guaranteed working maps
+                    st.write("🗺️ **Loading Reinsurance Maps...**")
+                    guaranteed_working_maps(df)
+                else:
+                    # Simple summary for reinsurance
+                    st.write("📊 **Reinsurance Reports Summary**")
+                    st.write(f"Total rows: {len(df):,}")
+                    
+                    # Find dollar column
+                    dollar_col = None
+                    possible_dollar_cols = ['dollars', 'amount', 'value', 'dollar amount', 'fund amount', 'total']
+                    for col in df.columns:
+                        col_lower = col.lower()
+                        if any(term in col_lower for term in possible_dollar_cols):
+                            dollar_col = col
+                            break
+                    
+                    if dollar_col:
+                        total_amount = df[dollar_col].sum()
+                        st.metric(f"Total {dollar_col}", f"${total_amount:,.2f}")
+        
+        except Exception as e:
+            st.error(f"Visualization error: {str(e)}")
+
+        # Download button
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download CSV",
+            data=csv,
+            file_name=f"usda_{data_type.replace(' ', '_')}_{state_input}.csv",
+            mime='text/csv'
+        )
 
 # --- Codes Reference ---
 st.markdown("---")

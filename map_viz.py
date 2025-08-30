@@ -29,64 +29,89 @@ def prepare_county_data(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Cleaned DataFrame ready for mapping
     """
-    if df is None or df.empty:
+    st.write("🔍 **DEBUG: prepare_county_data called**")
+    
+    if df is None:
+        st.error("❌ Input DataFrame is None")
         return pd.DataFrame()
+    
+    if df.empty:
+        st.error("❌ Input DataFrame is empty")
+        return pd.DataFrame()
+    
+    st.write(f"✅ Input data: {df.shape[0]} rows, {df.shape[1]} columns")
+    st.write(f"Input columns: {list(df.columns)}")
     
     try:
         # Make a copy to avoid modifying original
         result_df = df.copy()
+        st.write("✅ DataFrame copied successfully")
         
         # Ensure basic required columns exist
         required_cols = ['total_liability', 'total_premium', 'indemnity']
+        missing_cols = []
         for col in required_cols:
             if col not in result_df.columns:
                 result_df[col] = 0.0
+                missing_cols.append(col)
+        
+        if missing_cols:
+            st.warning(f"⚠️ Added missing columns with zeros: {missing_cols}")
         
         # Ensure state abbreviation column exists
         if 'state_abbrv' not in result_df.columns:
             if 'state_abbreviation' in result_df.columns:
                 result_df['state_abbrv'] = result_df['state_abbreviation']
+                st.write("✅ Used state_abbreviation for state_abbrv")
             elif 'locationstateabbreviation' in result_df.columns:
                 result_df['state_abbrv'] = result_df['locationstateabbreviation']
+                st.write("✅ Used locationstateabbreviation for state_abbrv")
             else:
                 result_df['state_abbrv'] = 'Unknown'
+                st.warning("⚠️ No state column found, set to 'Unknown'")
         
         # Ensure county name column exists
         if 'county_name' not in result_df.columns:
             if 'county' in result_df.columns:
                 result_df['county_name'] = result_df['county']
+                st.write("✅ Used county for county_name")
             else:
                 result_df['county_name'] = 'Unknown'
+                st.warning("⚠️ No county column found, set to 'Unknown'")
         
         # Clean up data types
         for col in required_cols:
+            old_type = result_df[col].dtype
             result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0.0)
+            st.write(f"✅ Converted {col} from {old_type} to numeric")
         
         # Remove rows with all zero values for key metrics
+        before_filter = len(result_df)
         result_df = result_df[
             (result_df['total_liability'] > 0) | 
             (result_df['total_premium'] > 0) | 
             (result_df['indemnity'] > 0)
         ]
+        after_filter = len(result_df)
+        st.write(f"✅ Filtered data: {before_filter} → {after_filter} rows")
         
         # Calculate derived metrics if possible
         if 'subsidy' not in result_df.columns:
             result_df['subsidy'] = 0.0
+            st.write("✅ Added subsidy column with zeros")
         else:
             result_df['subsidy'] = pd.to_numeric(result_df['subsidy'], errors='coerce').fillna(0.0)
+            st.write("✅ Cleaned subsidy column")
         
-        # Try to add FIPS codes if possible (but don't fail if it doesn't work)
-        try:
-            if 'fips' not in result_df.columns and 'county_name' in result_df.columns and 'state_abbrv' in result_df.columns:
-                from fips_mapping import add_fips_to_dataframe
-                result_df = add_fips_to_dataframe(result_df)
-        except Exception as fips_error:
-            # Don't fail the whole function if FIPS mapping doesn't work
-            pass  # Will be handled by calling function
+        st.write(f"✅ Final data: {result_df.shape[0]} rows, {result_df.shape[1]} columns")
+        st.write(f"Final columns: {list(result_df.columns)}")
         
         return result_df
         
     except Exception as e:
+        st.error(f"❌ Error preparing data: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc())
         # Return original data if preparation fails
         return df
 
@@ -310,36 +335,44 @@ def display_map_dashboard(df: pd.DataFrame):
     Args:
         df: DataFrame with county-level insurance data
     """
+    st.write("🔍 **DEBUG: display_map_dashboard called**")
     st.subheader("🗺️ Geographic Visualization Dashboard")
     
     # Basic data validation first
-    if df is None or df.empty:
-        st.warning("⚠️ No data available for mapping")
+    if df is None:
+        st.error("❌ DataFrame is None")
         return
     
-    st.write(f"📊 **Data Overview:** {df.shape[0]:,} records with {df.shape[1]} columns")
+    if df.empty:
+        st.error("❌ DataFrame is empty")
+        return
+    
+    st.success(f"✅ DataFrame received: {df.shape[0]:,} rows, {df.shape[1]} columns")
     
     # Show available columns for debugging
-    with st.expander("🔍 Debug: Available Columns"):
-        st.write("Available columns:", list(df.columns))
-        st.write("Sample data:")
+    st.write("**Available columns:**", list(df.columns))
+    
+    with st.expander("🔍 Sample Data"):
         st.dataframe(df.head(3))
     
     try:
+        st.write("🛠️ **Preparing data...**")
         # Prepare data
         df_clean = prepare_county_data(df)
         
         if df_clean.empty:
-            st.warning("⚠️ No data available after cleaning/preparation")
+            st.error("❌ No data available after cleaning/preparation")
             return
         
-        st.write(f"📊 **Cleaned Data:** {df_clean.shape[0]:,} records")
+        st.success(f"✅ Data prepared: {df_clean.shape[0]:,} rows")
         
         # Check if we have real county data or just "Unknown" counties
         has_real_counties = (
             'county_name' in df_clean.columns and 
             not df_clean['county_name'].isin(['Unknown', 'None', '']).all()
         )
+        
+        st.write(f"**Has real counties:** {has_real_counties}")
         
         # Map type selection based on available data
         if has_real_counties:
@@ -357,6 +390,8 @@ def display_map_dashboard(df: pd.DataFrame):
             index=map_options.index(default_map)
         )
         
+        st.write(f"**Selected map type:** {map_type}")
+        
         # Metric selection
         metric_options = {
             'total_liability': 'Total Liability ($)',
@@ -367,6 +402,8 @@ def display_map_dashboard(df: pd.DataFrame):
         
         # Only include metrics that exist in the data
         available_metrics = {k: v for k, v in metric_options.items() if k in df_clean.columns}
+        
+        st.write(f"**Available metrics:** {list(available_metrics.keys())}")
         
         if not available_metrics:
             st.error("❌ No suitable metrics found for mapping")
@@ -380,77 +417,39 @@ def display_map_dashboard(df: pd.DataFrame):
             format_func=lambda x: available_metrics[x]
         )
         
-        # Color scale selection
-        color_scales = ['Blues', 'Reds', 'Greens', 'Viridis', 'Plasma']
-        color_scale = st.selectbox("Select Color Scale", color_scales)
+        st.write(f"**Selected metric:** {selected_metric}")
         
         # Generate and display map
         with st.spinner("Generating map..."):
+            st.write(f"🗺️ **Creating {map_type} map...**")
             try:
-                if map_type == "County Choropleth" and has_real_counties:
-                    fig = create_county_choropleth(
-                        df_clean, 
-                        color_column=selected_metric,
-                        title=f"US Counties: {available_metrics[selected_metric]}",
-                        color_scale=color_scale
-                    )
-                elif map_type == "State Summary":
+                if map_type == "State Summary":
                     fig = create_state_summary_map(
                         df_clean,
                         color_column=selected_metric,
                         title=f"US States: {available_metrics[selected_metric]}"
                     )
-                else:  # Bubble Map
-                    size_metric = st.selectbox(
-                        "Select Metric for Bubble Size",
-                        options=list(available_metrics.keys()),
-                        format_func=lambda x: available_metrics[x],
-                        key='bubble_size'
-                    )
-                    fig = create_bubble_map(
-                        df_clean,
-                        size_column=size_metric,
-                        color_column=selected_metric,
-                        title=f"US Counties: Size={available_metrics[size_metric]}, Color={available_metrics[selected_metric]}"
-                    )
+                    st.write("✅ State map created")
+                else:
+                    st.write(f"⚠️ Map type {map_type} not implemented in debug mode")
+                    fig = None
                 
                 if fig is not None:
+                    st.write("� **Displaying map...**")
                     st.plotly_chart(fig, use_container_width=True)
+                    st.success("✅ Map displayed successfully!")
                 else:
                     st.error("❌ Failed to generate map figure")
-                
-                # Display summary statistics
-                display_summary_stats(df_clean, selected_metric, available_metrics, has_real_counties)
                         
             except Exception as map_error:
                 st.error(f"❌ Error generating {map_type}: {str(map_error)}")
-                st.info("💡 Trying fallback visualization...")
-                
-                # Fallback to state summary
-                try:
-                    fig = create_state_summary_map(
-                        df_clean,
-                        color_column=selected_metric,
-                        title=f"US States: {available_metrics[selected_metric]} (Fallback)"
-                    )
-                    if fig is not None:
-                        st.plotly_chart(fig, use_container_width=True)
-                        st.success("✅ Fallback state map displayed successfully")
-                    else:
-                        st.error("❌ Fallback map also failed")
-                except Exception as fallback_error:
-                    st.error(f"❌ Fallback visualization failed: {str(fallback_error)}")
-                    st.write("**Sample of cleaned data:**")
-                    st.dataframe(df_clean.head())
+                import traceback
+                st.code(traceback.format_exc())
                     
     except Exception as e:
         st.error(f"❌ Critical error in map dashboard: {str(e)}")
         import traceback
         st.code(traceback.format_exc())
-        
-        # Show raw data as last resort
-        st.write("**Raw data for debugging:**")
-        st.dataframe(df.head())
 
 
 def display_summary_stats(df_clean, selected_metric, available_metrics, has_real_counties):
